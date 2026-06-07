@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<meta charset="UTF-8">
-		<title>Stamp combination calculator</title>
+		<title>郵票配搭計算器</title>
 		
 		<style>
 			body {
@@ -65,20 +65,20 @@
 	
 	<body>
 		<div>
-			<label for="userInput">Target postage:</label>
+			<label for="userInput">所需郵費:</label>
 			<input type="number" id="userInput" name="userInput" step="0.1" min="0">
 			<input type="checkbox" id="overpay" name="overpay" value="over">
-			<label for="overpay">Allow overpay</label>
+			<label for="overpay">容許超付</label>
 		</div>
 		
 		<div id="results">
-			Results:<br>Please enter a target postage.
+			計算結果:<br>請輸入所需郵費。
 		</div>
 		
-		<h3>Definitive Stamps</h3>
+		<h3>通用郵票</h3>
 		<div id="defStamps"></div>
 		
-		<h3>Special Stamps</h3>
+		<h3>特別郵票</h3>
 		<div id="spStamps"></div>	
 		
 		<script>
@@ -87,13 +87,13 @@
 				{ stampValue: 0.2, displayText: "0.2", defaultValue: "N/A" },
 				{ stampValue: 0.5, displayText: "0.5", defaultValue: "N/A" },
 				{ stampValue: 1.0, displayText: "1.0", defaultValue: "N/A" },
-				{ stampValue: 1.7, displayText: "1.7 (2014)", defaultValue: "N/A" },
+				{ stampValue: 1.7, displayText: "1.7 (2014)", defaultValue: "Exclude" },
 				{ stampValue: 2.0, displayText: "2.0", defaultValue: "N/A" },
 				{ stampValue: 2.2, displayText: "2.2", defaultValue: "N/A" },
 				{ stampValue: 2.3, displayText: "2.3 (2014)", defaultValue: "Exclude" },
 				{ stampValue: 2.6, displayText: "2.6 (2014)", defaultValue: "Exclude" },
 				{ stampValue: 2.8, displayText: "2.8", defaultValue: "N/A" },
-				{ stampValue: 2.9, displayText: "2.9 (2014)", defaultValue: "N/A" },
+				{ stampValue: 2.9, displayText: "2.9 (2014)", defaultValue: "Exclude" },
 				{ stampValue: 3.1, displayText: "3.1 (2014)", defaultValue: "Exclude" },
 				{ stampValue: 3.4, displayText: "3.4 (2014)", defaultValue: "Exclude" },
 				{ stampValue: 3.7, displayText: "3.7", defaultValue: "N/A" },
@@ -146,9 +146,9 @@
 					html += `<td id="td_${id}">`;
 					html += `<div><h2>${stamp.displayText}</h2></div>`;
 					html += `<select id="sel_${id}" onchange="updateStatus('${id}', this.value)">`;
-					html += `<option value="N/A" ${stamp.defaultValue === 'N/A' ? 'selected' : ''}>N/A</option>`;
-					html += `<option value="Exclude" ${stamp.defaultValue === 'Exclude' ? 'selected' : ''}>Exclude</option>`;
-					html += `<option value="Include" ${stamp.defaultValue === 'Include' ? 'selected' : ''}>Include</option>`;
+					html += `<option value="N/A" ${stamp.defaultValue === 'N/A' ? 'selected' : ''}>有貨</option>`;
+					html += `<option value="Exclude" ${stamp.defaultValue === 'Exclude' ? 'selected' : ''}>缺貨</option>`;
+					html += `<option value="Include" ${stamp.defaultValue === 'Include' ? 'selected' : ''}>強制包括</option>`;
 					html += `</select></td>`;
 					
 					// Fill blank cells for the last row if needed
@@ -194,7 +194,7 @@
 				let allowOverpay = document.getElementById('overpay').checked;
 				
 				if (!userInput || isNaN(userInput) || parseFloat(userInput) <= 0) {
-					resultsDiv.innerHTML = "Results:<br>Please enter a valid positive target postage.";
+					resultsDiv.innerHTML = "計算結果:<br>請輸入合理所需郵費。";
 					return;
 				}
 				
@@ -219,14 +219,14 @@
 				let remTargetCents = targetCents - baseSumCents;
 				
 				if (remTargetCents === 0) {
-					resultsDiv.innerHTML = "Results:<br>" + formatCombos([[]], baseStamps, false, 0);
+					resultsDiv.innerHTML = "計算結果:<br>" + formatCombos([[]], baseStamps, false, 0);
 					return;
 					} else if (remTargetCents < 0) {
 					if (!allowOverpay) {
-						resultsDiv.innerHTML = "Results:<br>Cannot match exactly. Included stamps already exceed target.";
+						resultsDiv.innerHTML = "計算結果:<br>所選郵票總值已超過所需郵費。";
 						} else {
 						let overpayAmount = Math.abs(remTargetCents);
-						resultsDiv.innerHTML = "Results:<br>" + formatCombos([[]], baseStamps, true, overpayAmount);
+						resultsDiv.innerHTML = "計算結果:<br>" + formatCombos([[]], baseStamps, true, overpayAmount);
 					}
 					return;
 				}
@@ -269,7 +269,7 @@
 					}
 				}
 				
-				let outputHtml = "Results:<br>";
+				let outputHtml = "計算結果:<br>";
 				
 				if (exactCombos.length > 0) {
 					outputHtml += formatCombos(exactCombos, baseStamps, false, 0);
@@ -283,14 +283,14 @@
 					let overpayAmount = minSum - remTargetCents;
 					outputHtml += formatCombos(finalOverpays, baseStamps, true, overpayAmount);
 					} else {
-					outputHtml += "No combinations found.";
+					outputHtml += "未能找到匹配。";
 				}
 				
 				resultsDiv.innerHTML = outputHtml;
 			}
 			
 			function formatCombos(combosArray, baseStamps, isOverpay, overpayAmountCents) {
-				if (combosArray.length === 0) return "No combinations found.";
+				if (combosArray.length === 0) return "未能找到匹配。";
 				
 				let lines = combosArray.map(combo => {
 					let fullCombo = [...baseStamps, ...combo];
