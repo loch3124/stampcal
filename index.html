@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>Stamp combination calculator</title>
+		
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				margin: 20px;
+				max-width: 900px;
+			}
+			
+			label {
+				font-size: 24px;
+				font-weight: bold;
+			}
+			
+			input {
+				font-size: 18px;
+			}
+			
+			#results {
+				margin-top: 20px;
+				margin-bottom: 20px;
+				padding: 15px;
+				border: 1px solid;
+				min-height: 50px;
+				font-weight: bold;
+				border-radius: 4px;
+				line-height: 1.6;
+			}
+			
+			table {
+				width: 100%;
+				border-collapse: separate; 
+				border-spacing: 0;
+				border: 1px solid;
+				margin-bottom: 20px;
+			}
+			
+			td {
+				border: 1px solid;
+				padding: 10px;
+				text-align: center;
+				width: 25%;
+			}
+			
+			select {
+				margin-top: 5px;
+				padding: 2px;
+				font-size: 16px;
+			}
+			
+			h2 {
+				margin-top: 1px;
+				margin-bottom: 1px;
+			}
+			
+			h3 {
+				margin-bottom: 1px;
+			}
+		</style>
+	</head>
+	
+	<body>
+		<div>
+			<label for="userInput">Target postage:</label>
+			<input type="number" id="userInput" name="userInput" step="0.1" min="0">
+			<input type="checkbox" id="overpay" name="overpay" value="over">
+			<label for="overpay">Allow overpay</label>
+		</div>
+		
+		<div id="results">
+			Results:<br>Please enter a target postage.
+		</div>
+		
+		<h3>Definitive Stamps</h3>
+		<div id="defStamps"></div>
+		
+		<h3>Special Stamps</h3>
+		<div id="spStamps"></div>	
+		
+		<script>
+			const defStamps = [
+				{ stampValue: 0.1, displayText: "0.1", defaultValue: "N/A" },
+				{ stampValue: 0.2, displayText: "0.2", defaultValue: "N/A" },
+				{ stampValue: 0.5, displayText: "0.5", defaultValue: "N/A" },
+				{ stampValue: 1.0, displayText: "1.0", defaultValue: "N/A" },
+				{ stampValue: 1.7, displayText: "1.7 (2014)", defaultValue: "N/A" },
+				{ stampValue: 2.0, displayText: "2.0", defaultValue: "N/A" },
+				{ stampValue: 2.2, displayText: "2.2", defaultValue: "N/A" },
+				{ stampValue: 2.3, displayText: "2.3 (2014)", defaultValue: "Exclude" },
+				{ stampValue: 2.6, displayText: "2.6 (2014)", defaultValue: "Exclude" },
+				{ stampValue: 2.8, displayText: "2.8", defaultValue: "N/A" },
+				{ stampValue: 2.9, displayText: "2.9 (2014)", defaultValue: "N/A" },
+				{ stampValue: 3.1, displayText: "3.1 (2014)", defaultValue: "Exclude" },
+				{ stampValue: 3.4, displayText: "3.4 (2014)", defaultValue: "Exclude" },
+				{ stampValue: 3.7, displayText: "3.7", defaultValue: "N/A" },
+				{ stampValue: 4.0, displayText: "4.0", defaultValue: "N/A" },
+				{ stampValue: 4.9, displayText: "4.9 (2014)", defaultValue: "Exclude" },
+				{ stampValue: 5.0, displayText: "5.0", defaultValue: "N/A" },
+				{ stampValue: 5.4, displayText: "5.4", defaultValue: "N/A" },
+				{ stampValue: 5.5, displayText: "5.5", defaultValue: "N/A" },
+				{ stampValue: 10.0, displayText: "10.0", defaultValue: "N/A" },
+				{ stampValue: 15.5, displayText: "15.5", defaultValue: "N/A" },
+				{ stampValue: 20.0, displayText: "20.0", defaultValue: "N/A" },
+				{ stampValue: 50.0, displayText: "50.0", defaultValue: "N/A" }
+			];
+			const spStamps = [
+				{ stampValue: 2.4, displayText: "2.4", defaultValue: "Exclude" },
+				{ stampValue: 4.2, displayText: "4.2", defaultValue: "N/A" },
+				{ stampValue: 5.7, displayText: "5.7", defaultValue: "N/A" },
+				{ stampValue: 5.8, displayText: "5.8", defaultValue: "N/A" }
+			];
+			
+			let allStampsData = [];
+			
+			function init() {
+				renderTable("defStamps", defStamps, "def");
+				renderTable("spStamps", spStamps, "sp");
+				updateAllColors();
+				
+				document.getElementById('userInput').addEventListener('input', calculate);
+				document.getElementById('overpay').addEventListener('change', calculate);
+			}
+			
+			function renderTable(containerId, dataArray, prefix) {
+				let container = document.getElementById(containerId);
+				let html = '<table>';
+				
+				for(let i = 0; i < dataArray.length; i++) {
+					if (i % 4 === 0) html += '<tr>';
+					
+					let stamp = dataArray[i];
+					let id = prefix + '_' + i;
+					
+					allStampsData.push({
+						id: id,
+						valCents: Math.round(stamp.stampValue * 10), // Store as integers (tenths) to bypass JS float issues
+						display: stamp.displayText,
+						status: stamp.defaultValue,
+						originalValue: stamp.stampValue
+					});
+					
+					html += `<td id="td_${id}">`;
+					html += `<div><h2>${stamp.displayText}</h2></div>`;
+					html += `<select id="sel_${id}" onchange="updateStatus('${id}', this.value)">`;
+					html += `<option value="N/A" ${stamp.defaultValue === 'N/A' ? 'selected' : ''}>N/A</option>`;
+					html += `<option value="Exclude" ${stamp.defaultValue === 'Exclude' ? 'selected' : ''}>Exclude</option>`;
+					html += `<option value="Include" ${stamp.defaultValue === 'Include' ? 'selected' : ''}>Include</option>`;
+					html += `</select></td>`;
+					
+					// Fill blank cells for the last row if needed
+					if (i % 4 === 3 || i === dataArray.length - 1) {
+						if (i === dataArray.length - 1 && i % 4 !== 3) {
+							let missing = 3 - (i % 4);
+							for(let j = 0; j < missing; j++) {
+								html += '<td></td>';
+							}
+						}
+						html += '</tr>';
+					}
+				}
+				html += '</table>';
+				container.innerHTML = html;
+			}
+			
+			function updateStatus(id, newStatus) {
+				let stamp = allStampsData.find(s => s.id === id);
+				if (stamp) stamp.status = newStatus;
+				updateColor(id, newStatus);
+				calculate();
+			}
+			
+			function updateColor(id, status) {
+				let td = document.getElementById('td_' + id);
+				if (status === 'Exclude') {
+					td.style.backgroundColor = '#F08080'; // LightCoral
+					} else if (status === 'Include') {
+					td.style.backgroundColor = '#90EE90'; // LightGreen
+					} else {
+					td.style.backgroundColor = 'transparent';
+				}
+			}
+			
+			function updateAllColors() {
+				allStampsData.forEach(stamp => updateColor(stamp.id, stamp.status));
+			}
+			
+			function calculate() {
+				let resultsDiv = document.getElementById('results');
+				let userInput = document.getElementById('userInput').value;
+				let allowOverpay = document.getElementById('overpay').checked;
+				
+				if (!userInput || isNaN(userInput) || parseFloat(userInput) <= 0) {
+					resultsDiv.innerHTML = "Results:<br>Please enter a valid positive target postage.";
+					return;
+				}
+				
+				let targetCents = Math.round(parseFloat(userInput) * 10);
+				let baseStamps = [];
+				let baseSumCents = 0;
+				let usableStamps = [];
+				
+				allStampsData.forEach(stamp => {
+					if (stamp.status === 'Include') {
+						baseStamps.push(stamp);
+						baseSumCents += stamp.valCents;
+						usableStamps.push(stamp); // Can still be used again if needed
+						} else if (stamp.status === 'N/A') {
+						usableStamps.push(stamp);
+					}
+				});
+				
+				// Sorting large to small speeds up finding shorter combinations intuitively
+				usableStamps.sort((a, b) => b.valCents - a.valCents);
+				
+				let remTargetCents = targetCents - baseSumCents;
+				
+				if (remTargetCents === 0) {
+					resultsDiv.innerHTML = "Results:<br>" + formatCombos([[]], baseStamps, false, 0);
+					return;
+					} else if (remTargetCents < 0) {
+					if (!allowOverpay) {
+						resultsDiv.innerHTML = "Results:<br>Cannot match exactly. Included stamps already exceed target.";
+						} else {
+						let overpayAmount = Math.abs(remTargetCents);
+						resultsDiv.innerHTML = "Results:<br>" + formatCombos([[]], baseStamps, true, overpayAmount);
+					}
+					return;
+				}
+				
+				// Breadth-First Search (BFS) logic to ensure minimum stamps used
+				let queue = [ { sumCents: 0, combo: [], lastIdx: 0 } ];
+				let exactCombos = [];
+				let overpayCombos = [];
+				let minExactLen = Infinity;
+				let shortestToSum = new Map();
+				shortestToSum.set(0, 0);
+				
+				while (queue.length > 0) {
+					let curr = queue.shift();
+					
+					// Stop expanding if we already found an exact match and are matching its length
+					if (curr.combo.length >= minExactLen || curr.combo.length >= 25) continue; 
+					
+					for (let i = curr.lastIdx; i < usableStamps.length; i++) {
+						let stamp = usableStamps[i];
+						let nextSum = curr.sumCents + stamp.valCents;
+						let nextLen = curr.combo.length + 1;
+						
+						// Prune paths that are longer than previously found ways to hit the exact same sum
+						if (shortestToSum.has(nextSum) && shortestToSum.get(nextSum) < nextLen) {
+							continue;
+						}
+						shortestToSum.set(nextSum, nextLen);
+						
+						let nextCombo = [...curr.combo, stamp];
+						
+						if (nextSum === remTargetCents) {
+							minExactLen = nextLen;
+							exactCombos.push(nextCombo);
+							} else if (allowOverpay && nextSum > remTargetCents) {
+							overpayCombos.push({ sumCents: nextSum, combo: nextCombo });
+							} else {
+							queue.push({ sumCents: nextSum, combo: nextCombo, lastIdx: i });
+						}
+					}
+				}
+				
+				let outputHtml = "Results:<br>";
+				
+				if (exactCombos.length > 0) {
+					outputHtml += formatCombos(exactCombos, baseStamps, false, 0);
+					} else if (allowOverpay && overpayCombos.length > 0) {
+					// Priority 1: Minimum overpay amount. Priority 2: Minimum stamps for that amount.
+					let minSum = Math.min(...overpayCombos.map(o => o.sumCents));
+					let bestOverpays = overpayCombos.filter(o => o.sumCents === minSum);
+					let minLen = Math.min(...bestOverpays.map(o => o.combo.length));
+					let finalOverpays = bestOverpays.filter(o => o.combo.length === minLen).map(o => o.combo);
+					
+					let overpayAmount = minSum - remTargetCents;
+					outputHtml += formatCombos(finalOverpays, baseStamps, true, overpayAmount);
+					} else {
+					outputHtml += "No combinations found.";
+				}
+				
+				resultsDiv.innerHTML = outputHtml;
+			}
+			
+			function formatCombos(combosArray, baseStamps, isOverpay, overpayAmountCents) {
+				if (combosArray.length === 0) return "No combinations found.";
+				
+				let lines = combosArray.map(combo => {
+					let fullCombo = [...baseStamps, ...combo];
+					let counts = {};
+					let displays = {};
+					
+					fullCombo.forEach(stamp => {
+						counts[stamp.id] = (counts[stamp.id] || 0) + 1;
+						displays[stamp.id] = { val: stamp.originalValue, text: stamp.display };
+					});
+					
+					// Sort the output string by largest stamp denomination to smallest
+					let sortedIds = Object.keys(counts).sort((a, b) => displays[b].val - displays[a].val);
+					
+					let parts = sortedIds.map(id => {
+						let count = counts[id];
+						let text = displays[id].text;
+						return count > 1 ? `${text} x${count}` : `${text}`;
+					});
+					
+					let line = parts.join(" + ");
+					if (isOverpay) {
+						let overpayStr = (overpayAmountCents / 10).toFixed(1);
+						line += ` (overpay ${overpayStr})`;
+					}
+					return line;
+				});
+				
+				// Clean up any permutations of identical output text that BFS might have generated alongside baseStamps
+				let uniqueLines = [...new Set(lines)];
+				return uniqueLines.join("<br>");
+			}
+			
+			window.onload = init;
+		</script>
+	</body>
+</html>
