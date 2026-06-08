@@ -8,7 +8,7 @@
 			body {
 				font-family: Arial, sans-serif;
 				margin: 20px;
-				max-width: 900px;
+				max-width: 650px;
 			}
 			
 			label {
@@ -119,10 +119,16 @@
 			function init() {
 				renderTable("defStamps", defStamps, "def");
 				renderTable("spStamps", spStamps, "sp");
+
+				// Load preferences right after generating the tables
+				loadPreferences(); 
 				updateAllColors();
 				
 				document.getElementById('userInput').addEventListener('input', calculate);
 				document.getElementById('overpay').addEventListener('change', calculate);
+				
+				// Run calculate once on load in case inputs were preserved by the browser
+				calculate();
 			}
 			
 			function renderTable(containerId, dataArray, prefix) {
@@ -165,11 +171,44 @@
 				html += '</table>';
 				container.innerHTML = html;
 			}
+
+			// --- Local Storage Functions --- //
+    
+			function savePreferences() {
+				let prefs = {};
+				allStampsData.forEach(stamp => {
+					prefs[stamp.id] = stamp.status;
+				});
+				localStorage.setItem('stampPreferences', JSON.stringify(prefs));
+			}
+
+			function loadPreferences() {
+				let savedData = localStorage.getItem('stampPreferences');
+				if (savedData) {
+					try {
+						let prefs = JSON.parse(savedData);
+						allStampsData.forEach(stamp => {
+						// Check if we have a saved preference for this specific stamp ID
+						if (prefs[stamp.id]) {
+							stamp.status = prefs[stamp.id];
+							// Update the dropdown element to visually match the loaded data
+							let selectEl = document.getElementById('sel_' + stamp.id);
+							if (selectEl) {
+								selectEl.value = stamp.status;
+							}
+						}
+					});
+				} catch (e) {
+					console.error("Error parsing saved stamp preferences", e);
+					}
+				}
+			}
 			
 			function updateStatus(id, newStatus) {
 				let stamp = allStampsData.find(s => s.id === id);
 				if (stamp) stamp.status = newStatus;
 				updateColor(id, newStatus);
+				savePreferences(); // Save to local storage every time a dropdown is changed
 				calculate();
 			}
 			
